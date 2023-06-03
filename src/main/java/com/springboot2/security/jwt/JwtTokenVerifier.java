@@ -23,23 +23,30 @@ import java.util.stream.Collectors;
 
 public class JwtTokenVerifier extends OncePerRequestFilter {
 
+    private final JwtConfig jwtConfig;
+    private final JwtSecretKey secretKey;
+
+    public JwtTokenVerifier(JwtConfig jwtConfig, JwtSecretKey secretKey) {
+        this.jwtConfig = jwtConfig;
+        this.secretKey = secretKey;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
 
-        String authorizationHeader = request.getHeader("Authorization");
-        if (Strings.isNullOrEmpty(authorizationHeader) || !authorizationHeader.startsWith("Bearer ")) {
+        String authorizationHeader = request.getHeader(jwtConfig.getAuthorizationHeader());
+        if (Strings.isNullOrEmpty(authorizationHeader) || !authorizationHeader.startsWith(jwtConfig.getTokenPrefix())) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String jwtToken = authorizationHeader.replace("Bearer ", "");
+        String jwtToken = authorizationHeader.replace(jwtConfig.getTokenPrefix(), "");
 
         try {
-            String key = "verysecureverysecureverysecureverysecureverysecureverysecureverysecureverysecureverysecureverysecureverysecure";
             Jws<Claims> claimsJws = Jwts.parser()
-                    .setSigningKey(key.getBytes())
+                    .setSigningKey(secretKey.secretKey())
                     .parseClaimsJws(jwtToken);
 
             Claims body = claimsJws.getBody();
